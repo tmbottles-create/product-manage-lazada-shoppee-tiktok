@@ -21,9 +21,7 @@ partial class MdiMainForm
     private ToolStripMenuItem menuConfig = null!;
     private ToolStripMenuItem menuConfigApiKey = null!;
     private ToolStripMenuItem menuConfigImageKitSetup = null!;
-    private ToolStripMenuItem menuConfigDatabase = null!;
-    private ToolStripMenuItem menuConfigTemplates = null!;
-    private ToolStripMenuItem menuConfigExports = null!;
+    private ToolStripMenuItem menuConfigPaths = null!;
     private ToolStripMenuItem menuConfigLazadaImageMode = null!;
     private ToolStripMenuItem menuConfigCheckPrices = null!;
     private ToolStripMenuItem menuWindow = null!;
@@ -67,9 +65,7 @@ partial class MdiMainForm
         menuConfig = new ToolStripMenuItem();
         menuConfigApiKey = new ToolStripMenuItem();
         menuConfigImageKitSetup = new ToolStripMenuItem();
-        menuConfigDatabase = new ToolStripMenuItem();
-        menuConfigTemplates = new ToolStripMenuItem();
-        menuConfigExports = new ToolStripMenuItem();
+        menuConfigPaths = new ToolStripMenuItem();
         menuConfigLazadaImageMode = new ToolStripMenuItem();
         menuConfigCheckPrices = new ToolStripMenuItem();
         menuWindow = new ToolStripMenuItem();
@@ -199,7 +195,7 @@ partial class MdiMainForm
         // 
         // menuConfig
         // 
-        menuConfig.DropDownItems.AddRange(new ToolStripItem[] { menuConfigApiKey, menuConfigImageKitSetup, menuConfigDatabase, menuConfigTemplates, menuConfigExports, menuConfigLazadaImageMode, menuConfigCheckPrices });
+        menuConfig.DropDownItems.AddRange(new ToolStripItem[] { menuConfigApiKey, menuConfigImageKitSetup, menuConfigPaths, menuConfigLazadaImageMode, menuConfigCheckPrices });
         menuConfig.Name = "menuConfig";
         menuConfig.Size = new Size(61, 23);
         menuConfig.Text = "Config";
@@ -218,26 +214,12 @@ partial class MdiMainForm
         menuConfigImageKitSetup.Text = "ImageKit Setup";
         menuConfigImageKitSetup.Click += menuConfigImageKitSetup_Click;
         // 
-        // menuConfigDatabase
+        // menuConfigPaths
         // 
-        menuConfigDatabase.Name = "menuConfigDatabase";
-        menuConfigDatabase.Size = new Size(198, 24);
-        menuConfigDatabase.Text = "Database Path";
-        menuConfigDatabase.Click += menuConfigDatabase_Click;
-        // 
-        // menuConfigTemplates
-        // 
-        menuConfigTemplates.Name = "menuConfigTemplates";
-        menuConfigTemplates.Size = new Size(198, 24);
-        menuConfigTemplates.Text = "Template Path";
-        menuConfigTemplates.Click += menuConfigTemplates_Click;
-        // 
-        // menuConfigExports
-        // 
-        menuConfigExports.Name = "menuConfigExports";
-        menuConfigExports.Size = new Size(198, 24);
-        menuConfigExports.Text = "Export Path";
-        menuConfigExports.Click += menuConfigExports_Click;
+        menuConfigPaths.Name = "menuConfigPaths";
+        menuConfigPaths.Size = new Size(201, 24);
+        menuConfigPaths.Text = "Config Path";
+        menuConfigPaths.Click += menuConfigPaths_Click;
         // 
         // menuConfigLazadaImageMode
         // 

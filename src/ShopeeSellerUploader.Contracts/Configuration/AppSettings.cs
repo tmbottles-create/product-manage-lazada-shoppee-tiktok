@@ -81,9 +81,9 @@ public sealed class StorageOptions
 
 public sealed class ProductCatalogOptions
 {
-    public string DatabaseFileName { get; init; } = "product-catalog.db";
-    public string ExportDirectoryName { get; init; } = "exports";
-    public string TemplateRootDirectory { get; init; } = @"D:\shoppee-lazada-templete";
+    public string DatabaseFileName { get; set; } = "product-catalog.db";
+    public string ExportDirectoryName { get; set; } = "exports";
+    public string TemplateRootDirectory { get; set; } = @"D:\shoppee-lazada-templete";
     public LazadaImageMode LazadaImageMode { get; set; } = LazadaImageMode.PublicImageUrl;
 }
 

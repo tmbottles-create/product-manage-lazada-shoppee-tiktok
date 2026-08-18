@@ -187,18 +187,6 @@ public partial class MdiMainForm : Form
         SetStatus("Started TikTok export.");
     }
 
-    private void menuConfigDatabase_Click(object? sender, EventArgs e)
-    {
-        MessageBox.Show(
-            this,
-            _pathProvider.DatabaseFilePath,
-            "Database Path",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
-
-        SetStatus("Displayed database path.");
-    }
-
     private void menuConfigImageKitSetup_Click(object? sender, EventArgs e)
     {
         try
@@ -268,28 +256,44 @@ public partial class MdiMainForm : Form
         }
     }
 
-    private void menuConfigTemplates_Click(object? sender, EventArgs e)
+    private void menuConfigPaths_Click(object? sender, EventArgs e)
     {
-        MessageBox.Show(
-            this,
+        using var dialog = new ConfigPathForm(
+            _settings.ProductCatalog,
+            _pathProvider.DatabaseFilePath,
             _pathProvider.TemplateRootDirectory,
-            "Template Path",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+            _pathProvider.ExportDirectory);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
 
-        SetStatus("Displayed template path.");
-    }
+        try
+        {
+            SavePathSettings(dialog.DatabasePath, dialog.TemplatePath, dialog.ExportPath);
 
-    private void menuConfigExports_Click(object? sender, EventArgs e)
-    {
-        MessageBox.Show(
-            this,
-            _pathProvider.ExportDirectory,
-            "Export Path",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+            _settings.ProductCatalog.DatabaseFileName = dialog.DatabasePath;
+            _settings.ProductCatalog.TemplateRootDirectory = dialog.TemplatePath;
+            _settings.ProductCatalog.ExportDirectoryName = dialog.ExportPath;
 
-        SetStatus("Displayed export path.");
+            Directory.CreateDirectory(Path.GetDirectoryName(dialog.DatabasePath) ?? AppContext.BaseDirectory);
+            Directory.CreateDirectory(dialog.TemplatePath);
+            Directory.CreateDirectory(dialog.ExportPath);
+
+            MessageBox.Show(
+                this,
+                "Saved path settings successfully.",
+                "Config Path",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            SetStatus("Saved config paths.");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Config Path", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            SetStatus("Failed to save config paths.");
+        }
     }
 
     private void menuConfigLazadaImageMode_Click(object? sender, EventArgs e)
@@ -398,6 +402,28 @@ public partial class MdiMainForm : Form
         imageKit["TimeoutSeconds"] = options.TimeoutSeconds;
         imageKit["MaxUploadSizeMb"] = options.MaxUploadSizeMb;
         imageKit["UseUniqueFileName"] = options.UseUniqueFileName;
+
+        File.WriteAllText(settingsPath, root.ToJsonString(new JsonSerializerOptions
+        {
+            WriteIndented = true
+        }));
+    }
+
+    private static void SavePathSettings(string databasePath, string templatePath, string exportPath)
+    {
+        var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        var root = JsonNode.Parse(File.ReadAllText(settingsPath))
+            ?? throw new InvalidOperationException("Unable to read appsettings.json.");
+
+        var appSettings = root["AppSettings"]?.AsObject()
+            ?? throw new InvalidOperationException("AppSettings section was not found.");
+
+        var productCatalog = appSettings["ProductCatalog"]?.AsObject()
+            ?? throw new InvalidOperationException("ProductCatalog section was not found.");
+
+        productCatalog["DatabaseFileName"] = databasePath;
+        productCatalog["TemplateRootDirectory"] = templatePath;
+        productCatalog["ExportDirectoryName"] = exportPath;
 
         File.WriteAllText(settingsPath, root.ToJsonString(new JsonSerializerOptions
         {

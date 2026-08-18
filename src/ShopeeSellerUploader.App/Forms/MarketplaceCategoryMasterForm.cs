@@ -79,10 +79,12 @@ public sealed class MarketplaceCategoryMasterForm : Form
         var layout = new TableLayoutPanel();
         var lblHelp = new Label();
         var contentPanel = new TableLayoutPanel();
+        var listPanel = new TableLayoutPanel();
         var editorPanel = new Panel();
         var lblCategoryName = new Label();
+        var editorCard = new Panel();
         var actionPanel = new FlowLayoutPanel();
-        var importPanel = new FlowLayoutPanel();
+        var listHeaderPanel = new FlowLayoutPanel();
         var bottomPanel = new FlowLayoutPanel();
 
         SuspendLayout();
@@ -109,37 +111,75 @@ public sealed class MarketplaceCategoryMasterForm : Form
         _lblSummary.Font = new Font("Segoe UI", 9F);
 
         contentPanel.ColumnCount = 2;
-        contentPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52F));
-        contentPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48F));
+        contentPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54F));
+        contentPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46F));
         contentPanel.Dock = DockStyle.Fill;
+
+        listPanel.ColumnCount = 1;
+        listPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        listPanel.RowCount = 2;
+        listPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+        listPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        listPanel.Dock = DockStyle.Fill;
+        listPanel.BackColor = Color.White;
+        listPanel.Padding = new Padding(12);
+        listPanel.Margin = new Padding(0, 0, 8, 0);
+        contentPanel.Controls.Add(listPanel, 0, 0);
+
+        listHeaderPanel.Dock = DockStyle.Fill;
+        listHeaderPanel.FlowDirection = FlowDirection.LeftToRight;
+        listHeaderPanel.WrapContents = false;
+        listHeaderPanel.Margin = new Padding(0);
+        listPanel.Controls.Add(listHeaderPanel, 0, 0);
+
+        if (_marketplaceKey is "Lazada" or "TikTok")
+        {
+            ConfigureSecondaryButton(
+                _btnImport,
+                _marketplaceKey == "Lazada" ? "Import Lazada File" : "Import TikTok File",
+                btnImport_Click);
+            _btnImport.Width = 172;
+            _btnImport.Margin = new Padding(0, 0, 10, 0);
+            listHeaderPanel.Controls.Add(_btnImport);
+        }
 
         _listCategories.Dock = DockStyle.Fill;
         _listCategories.Font = new Font("Segoe UI", 10F);
         _listCategories.BorderStyle = BorderStyle.FixedSingle;
+        _listCategories.BackColor = Color.FromArgb(248, 250, 252);
         _listCategories.SelectedIndexChanged += listCategories_SelectedIndexChanged;
-        contentPanel.Controls.Add(_listCategories, 0, 0);
+        _listCategories.Margin = new Padding(0);
+        listPanel.Controls.Add(_listCategories, 0, 1);
 
         editorPanel.Dock = DockStyle.Fill;
-        editorPanel.Padding = new Padding(16, 12, 0, 0);
+        editorPanel.BackColor = Color.FromArgb(248, 250, 252);
+        editorPanel.Margin = new Padding(8, 0, 0, 0);
         contentPanel.Controls.Add(editorPanel, 1, 0);
+
+        editorCard.Dock = DockStyle.Top;
+        editorCard.Height = 190;
+        editorCard.BackColor = Color.White;
+        editorCard.Padding = new Padding(18, 16, 18, 16);
+        editorPanel.Controls.Add(editorCard);
 
         lblCategoryName.AutoSize = true;
         lblCategoryName.Location = new Point(0, 0);
         lblCategoryName.Text = $"{_marketplaceLabel} Category";
         lblCategoryName.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
-        editorPanel.Controls.Add(lblCategoryName);
+        editorCard.Controls.Add(lblCategoryName);
 
         _txtCategoryName.Location = new Point(0, 28);
-        _txtCategoryName.Width = 360;
+        _txtCategoryName.Width = 342;
         _txtCategoryName.Font = new Font("Segoe UI", 10F);
-        editorPanel.Controls.Add(_txtCategoryName);
+        editorCard.Controls.Add(_txtCategoryName);
 
         actionPanel.Location = new Point(0, 72);
-        actionPanel.Width = 390;
+        actionPanel.Width = 342;
         actionPanel.Height = 40;
         actionPanel.FlowDirection = FlowDirection.LeftToRight;
         actionPanel.WrapContents = false;
-        editorPanel.Controls.Add(actionPanel);
+        actionPanel.Margin = new Padding(0);
+        editorCard.Controls.Add(actionPanel);
 
         ConfigurePrimaryButton(_btnAdd, "Add", btnAdd_Click);
         ConfigureSecondaryButton(_btnUpdate, "Edit", btnUpdate_Click);
@@ -149,23 +189,6 @@ public sealed class MarketplaceCategoryMasterForm : Form
         actionPanel.Controls.Add(_btnAdd);
         actionPanel.Controls.Add(_btnUpdate);
         actionPanel.Controls.Add(_btnDelete);
-
-        importPanel.Location = new Point(0, 124);
-        importPanel.Width = 390;
-        importPanel.Height = 40;
-        importPanel.FlowDirection = FlowDirection.LeftToRight;
-        importPanel.WrapContents = false;
-        editorPanel.Controls.Add(importPanel);
-
-        if (_marketplaceKey is "Lazada" or "TikTok")
-        {
-            ConfigureSecondaryButton(
-                _btnImport,
-                _marketplaceKey == "Lazada" ? "Import Lazada File" : "Import TikTok File",
-                btnImport_Click);
-            _btnImport.Width = 160;
-            importPanel.Controls.Add(_btnImport);
-        }
 
         bottomPanel.Dock = DockStyle.Fill;
         bottomPanel.FlowDirection = FlowDirection.RightToLeft;
@@ -208,7 +231,7 @@ public sealed class MarketplaceCategoryMasterForm : Form
     private void ConfigureSecondaryButton(Button button, string text, EventHandler onClick)
     {
         button.Text = text;
-        button.Width = 96;
+        button.Width = 110;
         button.Height = 34;
         button.BackColor = Color.White;
         button.ForeColor = Color.FromArgb(30, 64, 175);
