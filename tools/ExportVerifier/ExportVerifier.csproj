@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ShopeeSellerUploader.Core\ShopeeSellerUploader.Core.csproj" />
+    <ProjectReference Include="..\..\src\ShopeeSellerUploader.Contracts\ShopeeSellerUploader.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\ShopeeSellerUploader.Infrastructure\ShopeeSellerUploader.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

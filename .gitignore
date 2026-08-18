@@ -1,0 +1,32 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.user
+*.suo
+
+# Local app/runtime data
+.appdata/
+.localappdata/
+.dotnet/
+.nuget/
+.codex-temp/
+**/.codex-temp/
+
+# Generated app data
+Data/
+*.db
+*.dat
+*.bin
+*.log
+checkpoint.json
+
+# Generated exports and temporary files
+*.zip
+*.xlsx
+
+# IDE / OS noise
+.vs/
+Thumbs.db
+Desktop.ini
