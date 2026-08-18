@@ -4,6 +4,7 @@ using ShopeeSellerUploader.Contracts.Interfaces;
 using ShopeeSellerUploader.Core.Models;
 using ShopeeSellerUploader.Infrastructure.Configuration;
 using ShopeeSellerUploader.Infrastructure.Services;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -343,6 +344,38 @@ public partial class MdiMainForm : Form
     private void menuWindowTileVertical_Click(object? sender, EventArgs e)
     {
         LayoutMdi(MdiLayout.TileVertical);
+    }
+
+    private void menuHelpUserManual_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            var helpFilePath = Path.Combine(AppContext.BaseDirectory, "Help", "user-manual.html");
+            if (!File.Exists(helpFilePath))
+            {
+                MessageBox.Show(
+                    this,
+                    "The user manual file was not found.",
+                    "User Manual",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                SetStatus("User manual file was not found.");
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = helpFilePath,
+                UseShellExecute = true
+            });
+
+            SetStatus("Opened user manual.");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "User Manual", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            SetStatus("Failed to open user manual.");
+        }
     }
 
     private void SetStatus(string message)

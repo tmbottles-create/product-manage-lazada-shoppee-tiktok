@@ -28,6 +28,8 @@ partial class MdiMainForm
     private ToolStripMenuItem menuWindowCascade = null!;
     private ToolStripMenuItem menuWindowTileHorizontal = null!;
     private ToolStripMenuItem menuWindowTileVertical = null!;
+    private ToolStripMenuItem menuHelp = null!;
+    private ToolStripMenuItem menuHelpUserManual = null!;
     private Panel headerPanel = null!;
     private Label lblHeaderTitle = null!;
     private Label lblHeaderSubtitle = null!;
@@ -72,6 +74,8 @@ partial class MdiMainForm
         menuWindowCascade = new ToolStripMenuItem();
         menuWindowTileHorizontal = new ToolStripMenuItem();
         menuWindowTileVertical = new ToolStripMenuItem();
+        menuHelp = new ToolStripMenuItem();
+        menuHelpUserManual = new ToolStripMenuItem();
         headerPanel = new Panel();
         lblHeaderTitle = new Label();
         lblHeaderSubtitle = new Label();
@@ -87,7 +91,7 @@ partial class MdiMainForm
         menuMain.BackColor = Color.White;
         menuMain.Font = new Font("Segoe UI", 10F);
         menuMain.ImageScalingSize = new Size(20, 20);
-        menuMain.Items.AddRange(new ToolStripItem[] { menuProduct, menuMaster, menuExport, menuConfig, menuWindow });
+        menuMain.Items.AddRange(new ToolStripItem[] { menuProduct, menuMaster, menuExport, menuConfig, menuWindow, menuHelp });
         menuMain.Location = new Point(0, 0);
         menuMain.Name = "menuMain";
         menuMain.Padding = new Padding(10, 8, 10, 8);
@@ -262,6 +266,20 @@ partial class MdiMainForm
         menuWindowTileVertical.Size = new Size(184, 24);
         menuWindowTileVertical.Text = "Tile Vertical";
         menuWindowTileVertical.Click += menuWindowTileVertical_Click;
+        // 
+        // menuHelp
+        // 
+        menuHelp.DropDownItems.AddRange(new ToolStripItem[] { menuHelpUserManual });
+        menuHelp.Name = "menuHelp";
+        menuHelp.Size = new Size(52, 23);
+        menuHelp.Text = "Help";
+        // 
+        // menuHelpUserManual
+        // 
+        menuHelpUserManual.Name = "menuHelpUserManual";
+        menuHelpUserManual.Size = new Size(165, 24);
+        menuHelpUserManual.Text = "User Manual";
+        menuHelpUserManual.Click += menuHelpUserManual_Click;
         // 
         // headerPanel
         // 

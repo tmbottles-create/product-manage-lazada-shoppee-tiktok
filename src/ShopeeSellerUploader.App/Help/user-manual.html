@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Manual</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #162033;
+      --muted: #5f6f86;
+      --brand: #1846a3;
+      --accent: #16a34a;
+      --border: #d8e2f0;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1846a3 0%, #2563eb 100%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 28px 30px;
+      box-shadow: 0 18px 40px rgba(24, 70, 163, 0.18);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      color: var(--brand);
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    ol, ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .full {
+      margin-top: 18px;
+    }
+
+    .tip {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: #effbf3;
+      border: 1px solid #b8e7c8;
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    code {
+      background: #eef2ff;
+      color: #1d4ed8;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: Consolas, monospace;
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Shopee Lazada Product Studio</h1>
+      <p>Quick user manual for daily product, category, export, and path setup work.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>1. Start Here</h2>
+        <ol>
+          <li>Open <code>Config &gt; Config Path</code>.</li>
+          <li>Check Database, Template, and Export paths.</li>
+          <li>Save path settings before importing or exporting.</li>
+        </ol>
+        <div class="tip">Tip: If templates are not found, check the Template Path first.</div>
+      </article>
+
+      <article class="card">
+        <h2>2. Product Menu</h2>
+        <ol>
+          <li>Use <code>Product List</code> to view all items.</li>
+          <li>Use <code>Add Product</code> to create a new item.</li>
+          <li>Use <code>Copy Product</code> to duplicate a selected item.</li>
+          <li>Use Search to filter by category or product name.</li>
+        </ol>
+      </article>
+    </section>
+
+    <article class="card full">
+      <h2>3. Category Setup</h2>
+      <h3>Category Mapping</h3>
+      <ul>
+        <li>Open <code>Master &gt; Category Mapping</code>.</li>
+        <li>Match Product Category to Lazada Sheet, Shopee Category ID, and TikTok Category.</li>
+        <li>Save after editing mappings.</li>
+      </ul>
+
+      <h3>Category Masters</h3>
+      <ul>
+        <li><code>Master &gt; Lazada Cat Master</code>: add, edit, delete, or import Lazada category values.</li>
+        <li><code>Master &gt; Shopee Cat Master</code>: manage Shopee category ID master values.</li>
+        <li><code>Master &gt; TikTok Cat Master</code>: add, edit, delete, or import TikTok category values.</li>
+      </ul>
+    </article>
+
+    <article class="card full">
+      <h2>4. Export Workflow</h2>
+      <ol>
+        <li>Select products in Product List.</li>
+        <li>Use <code>Export &gt; Export Shopee</code>, <code>Export Lazada</code>, or <code>Export TikTok</code>.</li>
+        <li>Open the generated file from the workspace buttons if needed.</li>
+        <li>Check the Export Path if you cannot find the output file.</li>
+      </ol>
+    </article>
+
+    <article class="card full">
+      <h2>5. Common Problems</h2>
+      <ul>
+        <li>If category lists are empty, check Template Path or Category Master data.</li>
+        <li>If export fails, confirm Category Mapping is saved first.</li>
+        <li>If the app reads the wrong folder, update it in <code>Config &gt; Config Path</code>.</li>
+      </ul>
+      <p class="muted">Last updated: August 18, 2026</p>
+    </article>
+  </div>
+</body>
+</html>
