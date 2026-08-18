@@ -14,6 +14,7 @@ public partial class MdiMainForm : Form
     private readonly AppSettings _settings;
     private readonly IProductRepository _productRepository;
     private readonly ICategoryMappingRepository _categoryMappingRepository;
+    private readonly IMarketplaceCategoryMasterRepository _marketplaceCategoryMasterRepository;
     private readonly IMarketplaceExportService _exportService;
     private readonly ITemplateMetadataService _templateMetadataService;
     private readonly IAiProductSuggestionService _aiProductSuggestionService;
@@ -28,6 +29,7 @@ public partial class MdiMainForm : Form
         AppSettings settings,
         IProductRepository productRepository,
         ICategoryMappingRepository categoryMappingRepository,
+        IMarketplaceCategoryMasterRepository marketplaceCategoryMasterRepository,
         IMarketplaceExportService exportService,
         ITemplateMetadataService templateMetadataService,
         IAiProductSuggestionService aiProductSuggestionService,
@@ -41,6 +43,7 @@ public partial class MdiMainForm : Form
         _settings = settings;
         _productRepository = productRepository;
         _categoryMappingRepository = categoryMappingRepository;
+        _marketplaceCategoryMasterRepository = marketplaceCategoryMasterRepository;
         _exportService = exportService;
         _templateMetadataService = templateMetadataService;
         _aiProductSuggestionService = aiProductSuggestionService;
@@ -122,6 +125,48 @@ public partial class MdiMainForm : Form
     {
         OpenWorkspace().OpenCategoryMappingDialog();
         SetStatus("Opened Category Mapping.");
+    }
+
+    private async void menuMasterLazadaCategory_Click(object? sender, EventArgs e)
+    {
+        var names = await _templateMetadataService.GetLazadaSheetNamesAsync();
+        using var dialog = new MarketplaceCategoryMasterForm(
+            "Lazada Cat Master",
+            "Lazada",
+            "Lazada",
+            names,
+            _templateMetadataService,
+            _marketplaceCategoryMasterRepository);
+        dialog.ShowDialog(this);
+        SetStatus("Opened Lazada Cat Master.");
+    }
+
+    private async void menuMasterTikTokCategory_Click(object? sender, EventArgs e)
+    {
+        var names = await _templateMetadataService.GetTikTokCategoryNamesAsync();
+        using var dialog = new MarketplaceCategoryMasterForm(
+            "TikTok Cat Master",
+            "TikTok",
+            "TikTok",
+            names,
+            _templateMetadataService,
+            _marketplaceCategoryMasterRepository);
+        dialog.ShowDialog(this);
+        SetStatus("Opened TikTok Cat Master.");
+    }
+
+    private async void menuMasterShopeeCategory_Click(object? sender, EventArgs e)
+    {
+        var names = await _templateMetadataService.GetShopeeCategoryCodesAsync();
+        using var dialog = new MarketplaceCategoryMasterForm(
+            "Shopee Cat Master",
+            "Shopee",
+            "Shopee",
+            names,
+            _templateMetadataService,
+            _marketplaceCategoryMasterRepository);
+        dialog.ShowDialog(this);
+        SetStatus("Opened Shopee Cat Master.");
     }
 
     private void menuExportShopee_Click(object? sender, EventArgs e)

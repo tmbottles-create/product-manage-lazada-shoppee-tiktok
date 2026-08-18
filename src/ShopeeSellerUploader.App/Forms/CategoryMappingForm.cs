@@ -1,26 +1,44 @@
 using ShopeeSellerUploader.Core.Models;
 using ShopeeSellerUploader.Core.Utilities;
+using ShopeeSellerUploader.Contracts.Interfaces;
 
 namespace ShopeeSellerUploader.App.Forms;
 
 public partial class CategoryMappingForm : Form
 {
     private readonly BindingSource _bindingSource = new();
-    private readonly IReadOnlyList<string> _lazadaSheetNames;
+    private readonly List<string> _lazadaSheetNames;
+    private readonly List<string> _shopeeCategoryCodes;
+    private readonly List<string> _tikTokCategoryNames;
 
     public CategoryMappingForm(
         IReadOnlyList<string> productCategories,
         IReadOnlyList<string> lazadaSheetNames,
+        IReadOnlyList<string> shopeeCategoryCodes,
         IReadOnlyList<string> tikTokCategoryNames,
         IReadOnlyDictionary<string, CategoryMapping> currentMappings)
     {
         InitializeComponent();
-        _lazadaSheetNames = lazadaSheetNames;
+        _lazadaSheetNames = lazadaSheetNames
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _shopeeCategoryCodes = shopeeCategoryCodes
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _tikTokCategoryNames = tikTokCategoryNames
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var rows = productCategories.Select(category => new MappingRow
         {
             ProductCategory = category,
-            LazadaSheetName = currentMappings.TryGetValue(category, out var mapped) ? mapped.LazadaSheetName : lazadaSheetNames.FirstOrDefault() ?? string.Empty,
+            LazadaSheetName = currentMappings.TryGetValue(category, out var mapped) ? mapped.LazadaSheetName : _lazadaSheetNames.FirstOrDefault() ?? string.Empty,
             ShopeeCategoryCode = currentMappings.TryGetValue(category, out mapped) ? mapped.ShopeeCategoryCode : string.Empty,
             TikTokCategoryName = currentMappings.TryGetValue(category, out mapped) ? mapped.TikTokCategoryName : string.Empty
         }).ToList();
@@ -31,31 +49,45 @@ public partial class CategoryMappingForm : Form
 
         if (dgvMappings.Columns["LazadaSheetColumn"] is DataGridViewComboBoxColumn comboColumn)
         {
-            comboColumn.DataSource = lazadaSheetNames.ToList();
+            comboColumn.DataSource = _lazadaSheetNames.ToList();
         }
 
         if (dgvMappings.Columns["TikTokCategoryColumn"] is DataGridViewComboBoxColumn tikTokColumn)
         {
-            tikTokColumn.DataSource = tikTokCategoryNames.ToList();
+            tikTokColumn.DataSource = _tikTokCategoryNames.ToList();
         }
+
+        dgvMappings.EditingControlShowing += dgvMappings_EditingControlShowing;
+        dgvMappings.CellValidating += dgvMappings_CellValidating;
     }
 
     public IReadOnlyList<CategoryMapping> GetMappings()
     {
-        return _bindingSource.List.Cast<MappingRow>()
+        return dgvMappings.Rows.Cast<DataGridViewRow>()
+            .Where(static row => !row.IsNewRow)
+            .Select(static row => new
+            {
+                ProductCategory = row.Cells[0].Value?.ToString()?.Trim() ?? string.Empty,
+                LazadaSheetName = row.Cells[1].Value?.ToString()?.Trim() ?? string.Empty,
+                ShopeeCategoryCode = row.Cells[2].Value?.ToString() ?? string.Empty,
+                TikTokCategoryName = row.Cells[3].Value?.ToString()?.Trim() ?? string.Empty
+            })
             .Where(static row => !string.IsNullOrWhiteSpace(row.ProductCategory) && !string.IsNullOrWhiteSpace(row.LazadaSheetName))
             .Select(row => new CategoryMapping
             {
                 ProductCategory = row.ProductCategory,
                 LazadaSheetName = row.LazadaSheetName,
                 ShopeeCategoryCode = ShopeeCategoryCodeParser.Normalize(row.ShopeeCategoryCode),
-                TikTokCategoryName = row.TikTokCategoryName?.Trim() ?? string.Empty
+                TikTokCategoryName = row.TikTokCategoryName
             })
             .ToList();
     }
 
     private void btnSave_Click(object sender, EventArgs e)
     {
+        ValidateChildren();
+        dgvMappings.EndEdit();
+        _bindingSource.EndEdit();
         DialogResult = DialogResult.OK;
         Close();
     }
@@ -66,55 +98,125 @@ public partial class CategoryMappingForm : Form
         Close();
     }
 
-    private void btnImportLazadaSheets_Click(object? sender, EventArgs e)
+    private void btnAdd_Click(object? sender, EventArgs e)
     {
         var rows = _bindingSource.List.Cast<MappingRow>().ToList();
-        var existingCategories = rows
-            .Select(static row => row.ProductCategory)
-            .Where(static value => !string.IsNullOrWhiteSpace(value))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var addedCount = 0;
-        foreach (var sheetName in _lazadaSheetNames)
+        rows.Add(new MappingRow
         {
-            if (string.IsNullOrWhiteSpace(sheetName) || existingCategories.Contains(sheetName))
-            {
-                continue;
-            }
+            ProductCategory = string.Empty,
+            LazadaSheetName = string.Empty,
+            ShopeeCategoryCode = string.Empty,
+            TikTokCategoryName = string.Empty
+        });
 
-            rows.Add(new MappingRow
-            {
-                ProductCategory = sheetName,
-                LazadaSheetName = sheetName,
-                ShopeeCategoryCode = string.Empty,
-                TikTokCategoryName = string.Empty
-            });
-            existingCategories.Add(sheetName);
-            addedCount++;
-        }
+        _bindingSource.DataSource = rows;
+        dgvMappings.DataSource = _bindingSource;
 
-        if (addedCount == 0)
+        var newRowIndex = rows.Count - 1;
+        if (newRowIndex < 0)
         {
-            MessageBox.Show(
-                this,
-                "No new Lazada sheets were found to import.",
-                "Import Lazada Sheets",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
             return;
         }
 
-        _bindingSource.DataSource = rows
-            .OrderBy(static row => row.ProductCategory, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        dgvMappings.DataSource = _bindingSource;
+        dgvMappings.ClearSelection();
+        dgvMappings.CurrentCell = dgvMappings.Rows[newRowIndex].Cells[0];
+        dgvMappings.BeginEdit(true);
+    }
 
-        MessageBox.Show(
-            this,
-            $"Imported {addedCount} Lazada sheet(s) into master category mapping.",
-            "Import Lazada Sheets",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+    private void dgvMappings_EditingControlShowing(object? sender, DataGridViewEditingControlShowingEventArgs e)
+    {
+        if (dgvMappings.CurrentCell is null)
+        {
+            return;
+        }
+
+        var columnName = dgvMappings.Columns[dgvMappings.CurrentCell.ColumnIndex].Name;
+        if ((columnName == "LazadaSheetColumn" || columnName == "TikTokCategoryColumn") &&
+            e.Control is ComboBox comboBox)
+        {
+            comboBox.DropDownStyle = ComboBoxStyle.DropDown;
+            comboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            comboBox.AutoCompleteSource = AutoCompleteSource.ListItems;
+        }
+        else if (columnName == "ShopeeCategoryColumn" && e.Control is TextBox textBox)
+        {
+            var autoCompleteValues = new AutoCompleteStringCollection();
+            autoCompleteValues.AddRange(_shopeeCategoryCodes.ToArray());
+            textBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            textBox.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            textBox.AutoCompleteCustomSource = autoCompleteValues;
+        }
+    }
+
+    private void dgvMappings_CellValidating(object? sender, DataGridViewCellValidatingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.ColumnIndex < 0)
+        {
+            return;
+        }
+
+        var columnName = dgvMappings.Columns[e.ColumnIndex].Name;
+        var enteredValue = e.FormattedValue?.ToString()?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(enteredValue))
+        {
+            return;
+        }
+
+        if (columnName == "LazadaSheetColumn")
+        {
+            EnsureComboValueExists(_lazadaSheetNames, enteredValue, "LazadaSheetColumn");
+        }
+        else if (columnName == "ShopeeCategoryColumn")
+        {
+            EnsureTextValueExists(_shopeeCategoryCodes, enteredValue);
+        }
+        else if (columnName == "TikTokCategoryColumn")
+        {
+            EnsureComboValueExists(_tikTokCategoryNames, enteredValue, "TikTokCategoryColumn");
+        }
+    }
+
+    private void EnsureComboValueExists(List<string> values, string enteredValue, string columnName)
+    {
+        if (values.Contains(enteredValue, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        values.Add(enteredValue);
+        values.Sort(StringComparer.OrdinalIgnoreCase);
+
+        if (dgvMappings.Columns[columnName] is DataGridViewComboBoxColumn comboColumn)
+        {
+            comboColumn.DataSource = null;
+            comboColumn.DataSource = values.ToList();
+        }
+    }
+
+    private static void EnsureTextValueExists(List<string> values, string enteredValue)
+    {
+        if (values.Contains(enteredValue, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        values.Add(enteredValue);
+        values.Sort(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RefreshComboDataSources()
+    {
+        if (dgvMappings.Columns["LazadaSheetColumn"] is DataGridViewComboBoxColumn lazadaColumn)
+        {
+            lazadaColumn.DataSource = null;
+            lazadaColumn.DataSource = _lazadaSheetNames.ToList();
+        }
+
+        if (dgvMappings.Columns["TikTokCategoryColumn"] is DataGridViewComboBoxColumn tikTokColumn)
+        {
+            tikTokColumn.DataSource = null;
+            tikTokColumn.DataSource = _tikTokCategoryNames.ToList();
+        }
     }
 
     private sealed class MappingRow

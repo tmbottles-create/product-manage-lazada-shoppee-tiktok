@@ -348,14 +348,16 @@ public partial class ProductWorkspaceForm : Form
     private async void btnCategoryMapping_Click(object sender, EventArgs e)
     {
         var categories = _rows.Select(static row => row.Product.Category)
+            .Concat(_categoryMappings.Keys)
             .Where(static category => !string.IsNullOrWhiteSpace(category))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static category => category)
             .ToList();
 
         var lazadaSheetNames = await _templateMetadataService.GetLazadaSheetNamesAsync();
+        var shopeeCategoryCodes = await _templateMetadataService.GetShopeeCategoryCodesAsync();
         var tikTokCategoryNames = await _templateMetadataService.GetTikTokCategoryNamesAsync();
-        using var dialog = new CategoryMappingForm(categories, lazadaSheetNames, tikTokCategoryNames, _categoryMappings);
+        using var dialog = new CategoryMappingForm(categories, lazadaSheetNames, shopeeCategoryCodes, tikTokCategoryNames, _categoryMappings);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -825,7 +827,7 @@ public partial class ProductWorkspaceForm : Form
             return;
         }
 
-        dgvProducts.Columns[SelectColumnName].HeaderText = "Select All";
+        dgvProducts.Columns[SelectColumnName].HeaderText = string.Empty;
         PositionSelectAllHeaderCheckBox();
     }
 
@@ -1251,7 +1253,7 @@ public partial class ProductWorkspaceForm : Form
 
         _selectAllHeaderCheckBox.Visible = true;
         _selectAllHeaderCheckBox.Location = new Point(
-            headerCellRectangle.Right - _selectAllHeaderCheckBox.Width - 8,
+            headerCellRectangle.X + (headerCellRectangle.Width - _selectAllHeaderCheckBox.Width) / 2,
             headerCellRectangle.Y + (headerCellRectangle.Height - _selectAllHeaderCheckBox.Height) / 2);
         _selectAllHeaderCheckBox.BringToFront();
     }

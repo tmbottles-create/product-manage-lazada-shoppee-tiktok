@@ -8,14 +8,27 @@ namespace ShopeeSellerUploader.Infrastructure.Services;
 public sealed class TemplateMetadataService : ITemplateMetadataService
 {
     private readonly PathProvider _pathProvider;
+    private readonly IMarketplaceCategoryMasterRepository _marketplaceCategoryMasterRepository;
 
-    public TemplateMetadataService(PathProvider pathProvider)
+    public TemplateMetadataService(
+        PathProvider pathProvider,
+        IMarketplaceCategoryMasterRepository marketplaceCategoryMasterRepository)
     {
         _pathProvider = pathProvider;
+        _marketplaceCategoryMasterRepository = marketplaceCategoryMasterRepository;
     }
 
     public Task<IReadOnlyList<string>> GetLazadaSheetNamesAsync(CancellationToken cancellationToken = default)
     {
+        var masterNames = _marketplaceCategoryMasterRepository.GetNamesAsync("Lazada", cancellationToken).GetAwaiter().GetResult();
+        if (masterNames.Count > 0)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(masterNames
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList());
+        }
+
         var candidateDirectories = new List<DirectoryInfo>();
 
         var templateDirectory = new DirectoryInfo(_pathProvider.TemplateRootDirectory);
@@ -44,11 +57,6 @@ public sealed class TemplateMetadataService : ITemplateMetadataService
             .OrderByDescending(static file => file.LastWriteTimeUtc)
             .ToList();
 
-        if (files.Count == 0)
-        {
-            return Task.FromResult<IReadOnlyList<string>>([]);
-        }
-
         var names = files
             .SelectMany(ReadLazadaSheetNames)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -59,8 +67,28 @@ public sealed class TemplateMetadataService : ITemplateMetadataService
         return Task.FromResult<IReadOnlyList<string>>(names);
     }
 
+    public Task<IReadOnlyList<string>> GetShopeeCategoryCodesAsync(CancellationToken cancellationToken = default)
+    {
+        var names = _marketplaceCategoryMasterRepository.GetNamesAsync("Shopee", cancellationToken).GetAwaiter().GetResult()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<IReadOnlyList<string>>(names);
+    }
+
     public Task<IReadOnlyList<string>> GetTikTokCategoryNamesAsync(CancellationToken cancellationToken = default)
     {
+        var masterNames = _marketplaceCategoryMasterRepository.GetNamesAsync("TikTok", cancellationToken).GetAwaiter().GetResult();
+        if (masterNames.Count > 0)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(masterNames
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList());
+        }
+
         var candidateDirectories = new List<DirectoryInfo>();
 
         var templateDirectory = new DirectoryInfo(_pathProvider.TemplateRootDirectory);
@@ -90,12 +118,56 @@ public sealed class TemplateMetadataService : ITemplateMetadataService
                 .OrderByDescending(static x => x.LastWriteTimeUtc)
                 .FirstOrDefault();
 
-        if (file is null)
+        var templateNames = new List<string>();
+        if (file is not null)
+        {
+            using var workbook = new XLWorkbook(file.FullName);
+            var worksheet = workbook.Worksheets.FirstOrDefault(ws =>
+                string.Equals(ws.Name, "Category", StringComparison.OrdinalIgnoreCase));
+
+            if (worksheet is not null)
+            {
+                templateNames = worksheet.Column(1)
+                    .CellsUsed()
+                    .Select(cell => cell.GetString().Trim())
+                    .Where(static name => !string.IsNullOrWhiteSpace(name))
+                    .ToList();
+            }
+        }
+
+        var names = templateNames
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static name => name)
+            .ToList();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<IReadOnlyList<string>>(names);
+    }
+
+    public Task<IReadOnlyList<string>> GetLazadaSheetNamesFromFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
             return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
-        using var workbook = new XLWorkbook(file.FullName);
+        var names = ReadLazadaSheetNames(new FileInfo(filePath))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static name => name)
+            .ToList();
+
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<IReadOnlyList<string>>(names);
+    }
+
+    public Task<IReadOnlyList<string>> GetTikTokCategoryNamesFromFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        using var workbook = new XLWorkbook(filePath);
         var worksheet = workbook.Worksheets.FirstOrDefault(ws =>
             string.Equals(ws.Name, "Category", StringComparison.OrdinalIgnoreCase));
 

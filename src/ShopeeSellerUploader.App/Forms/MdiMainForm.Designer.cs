@@ -11,6 +11,9 @@ partial class MdiMainForm
     private ToolStripMenuItem menuProductRefresh = null!;
     private ToolStripMenuItem menuMaster = null!;
     private ToolStripMenuItem menuMasterCategory = null!;
+    private ToolStripMenuItem menuMasterLazadaCategory = null!;
+    private ToolStripMenuItem menuMasterShopeeCategory = null!;
+    private ToolStripMenuItem menuMasterTikTokCategory = null!;
     private ToolStripMenuItem menuExport = null!;
     private ToolStripMenuItem menuExportShopee = null!;
     private ToolStripMenuItem menuExportLazada = null!;
@@ -54,6 +57,9 @@ partial class MdiMainForm
         menuProductRefresh = new ToolStripMenuItem();
         menuMaster = new ToolStripMenuItem();
         menuMasterCategory = new ToolStripMenuItem();
+        menuMasterLazadaCategory = new ToolStripMenuItem();
+        menuMasterShopeeCategory = new ToolStripMenuItem();
+        menuMasterTikTokCategory = new ToolStripMenuItem();
         menuExport = new ToolStripMenuItem();
         menuExportShopee = new ToolStripMenuItem();
         menuExportLazada = new ToolStripMenuItem();
@@ -130,7 +136,7 @@ partial class MdiMainForm
         // 
         // menuMaster
         // 
-        menuMaster.DropDownItems.AddRange(new ToolStripItem[] { menuMasterCategory });
+        menuMaster.DropDownItems.AddRange(new ToolStripItem[] { menuMasterCategory, menuMasterLazadaCategory, menuMasterShopeeCategory, menuMasterTikTokCategory });
         menuMaster.Name = "menuMaster";
         menuMaster.Size = new Size(65, 23);
         menuMaster.Text = "Master";
@@ -141,6 +147,27 @@ partial class MdiMainForm
         menuMasterCategory.Size = new Size(191, 24);
         menuMasterCategory.Text = "Category Mapping";
         menuMasterCategory.Click += menuMasterCategory_Click;
+        // 
+        // menuMasterLazadaCategory
+        // 
+        menuMasterLazadaCategory.Name = "menuMasterLazadaCategory";
+        menuMasterLazadaCategory.Size = new Size(191, 24);
+        menuMasterLazadaCategory.Text = "Lazada Cat Master";
+        menuMasterLazadaCategory.Click += menuMasterLazadaCategory_Click;
+        // 
+        // menuMasterShopeeCategory
+        // 
+        menuMasterShopeeCategory.Name = "menuMasterShopeeCategory";
+        menuMasterShopeeCategory.Size = new Size(191, 24);
+        menuMasterShopeeCategory.Text = "Shopee Cat Master";
+        menuMasterShopeeCategory.Click += menuMasterShopeeCategory_Click;
+        // 
+        // menuMasterTikTokCategory
+        // 
+        menuMasterTikTokCategory.Name = "menuMasterTikTokCategory";
+        menuMasterTikTokCategory.Size = new Size(191, 24);
+        menuMasterTikTokCategory.Text = "TikTok Cat Master";
+        menuMasterTikTokCategory.Click += menuMasterTikTokCategory_Click;
         // 
         // menuExport
         // 

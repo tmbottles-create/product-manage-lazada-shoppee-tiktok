@@ -48,8 +48,9 @@ internal static class Program
         IProductRepository productRepository = new SqliteProductRepository(pathProvider);
         IProductImageUploadStateRepository productImageUploadStateRepository = new SqliteProductImageUploadStateRepository(pathProvider);
         ICategoryMappingRepository categoryMappingRepository = new SqliteCategoryMappingRepository(pathProvider);
+        IMarketplaceCategoryMasterRepository marketplaceCategoryMasterRepository = new SqliteMarketplaceCategoryMasterRepository(pathProvider);
         IMarketplaceExportService exportService = new MarketplaceExportService(pathProvider, settings);
-        ITemplateMetadataService templateMetadataService = new TemplateMetadataService(pathProvider);
+        ITemplateMetadataService templateMetadataService = new TemplateMetadataService(pathProvider, marketplaceCategoryMasterRepository);
         IApiKeyStore apiKeyStore = new DpapiApiKeyStore(pathProvider);
         IOneDriveTokenStore oneDriveTokenStore = new DpapiLazadaTokenStore(pathProvider);
         ISessionStore sessionStore = new DpapiSessionStore(pathProvider);
@@ -64,6 +65,7 @@ internal static class Program
         productRepository.InitializeAsync().GetAwaiter().GetResult();
         productImageUploadStateRepository.InitializeAsync().GetAwaiter().GetResult();
         categoryMappingRepository.InitializeAsync().GetAwaiter().GetResult();
+        marketplaceCategoryMasterRepository.InitializeAsync().GetAwaiter().GetResult();
 
         try
         {
@@ -71,6 +73,7 @@ internal static class Program
                 settings,
                 productRepository,
                 categoryMappingRepository,
+                marketplaceCategoryMasterRepository,
                 exportService,
                 templateMetadataService,
                 aiProductSuggestionService,
