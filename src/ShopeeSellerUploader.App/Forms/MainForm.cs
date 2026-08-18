@@ -12,7 +12,9 @@ namespace ShopeeSellerUploader.App.Forms;
 
 public partial class ProductWorkspaceForm : Form
 {
+    private const string AllCategoriesOption = "All Categories";
     private const string SelectColumnName = "SelectColumn";
+    private const string NumberColumnName = "NumberColumn";
     private const string ThumbnailColumnName = "Thumbnail";
     private const int ThumbnailWidth = 72;
     private const int ThumbnailHeight = 72;
@@ -29,12 +31,15 @@ public partial class ProductWorkspaceForm : Form
     private readonly ILogger _logger;
     private readonly PathProvider _pathProvider;
     private readonly BindingSource _bindingSource = new();
+    private readonly CheckBox _selectAllHeaderCheckBox = new();
     private readonly List<ProductListRow> _rows = [];
+    private readonly List<ProductListRow> _filteredRows = [];
     private readonly Dictionary<string, CategoryMapping> _categoryMappings = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastShopeeExportedFilePath;
     private string? _lastTikTokExportedFilePath;
     private bool _isExporting;
     private bool _isUploadingLazadaImages;
+    private bool _isUpdatingHeaderCheckBox;
 
     public ProductWorkspaceForm(
         AppSettings settings,
@@ -61,9 +66,12 @@ public partial class ProductWorkspaceForm : Form
         _pathProvider = pathProvider;
 
         InitializeComponent();
+        InitializeSearchControls();
         ApplyButtonStyles();
         dgvProducts.AutoGenerateColumns = false;
         dgvProducts.DataSource = _bindingSource;
+        InitializeSelectAllHeaderCheckBox();
+        btnSelectAll.Visible = false;
         UpdateSelectAllButtonText();
     }
 
@@ -556,6 +564,30 @@ public partial class ProductWorkspaceForm : Form
         await Task.CompletedTask;
     }
 
+    private void btnSearch_Click(object? sender, EventArgs e)
+    {
+        ApplyProductFilter();
+    }
+
+    private void btnClearSearch_Click(object? sender, EventArgs e)
+    {
+        cboCategorySearch.SelectedIndex = 0;
+        txtNameSearch.Clear();
+        ApplyProductFilter();
+    }
+
+    private void SearchTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Enter)
+        {
+            return;
+        }
+
+        e.SuppressKeyPress = true;
+        e.Handled = true;
+        ApplyProductFilter();
+    }
+
     private async Task ReloadProductsAsync()
     {
         dgvProducts.DataSource = null;
@@ -563,11 +595,8 @@ public partial class ProductWorkspaceForm : Form
         DisposeRows();
         var products = await _productRepository.GetAllAsync();
         _rows.AddRange(products.Select(product => new ProductListRow(product)));
-        _bindingSource.DataSource = _rows;
-        dgvProducts.DataSource = _bindingSource;
-        UpdateSummaryLabel();
-        UpdateSelectAllButtonText();
-        UpdateSelectColumnHeaderText();
+        RefreshCategoryFilterOptions();
+        ApplyProductFilter();
     }
 
     private void dgvProducts_DataError(object? sender, DataGridViewDataErrorEventArgs e)
@@ -590,6 +619,8 @@ public partial class ProductWorkspaceForm : Form
         {
             _categoryMappings[mapping.ProductCategory] = mapping;
         }
+
+        RefreshCategoryFilterOptions();
     }
 
     private async Task ExportAsync(MarketplaceType marketplace)
@@ -768,7 +799,7 @@ public partial class ProductWorkspaceForm : Form
 
     private void SetAllRowsSelected(bool selected)
     {
-        foreach (var row in _rows)
+        foreach (var row in _filteredRows)
         {
             row.Selected = selected;
         }
@@ -781,7 +812,8 @@ public partial class ProductWorkspaceForm : Form
 
     private void UpdateSelectAllButtonText()
     {
-        btnSelectAll.Text = _rows.Count > 0 && _rows.All(static row => row.Selected)
+        SyncSelectAllHeaderCheckBox();
+        btnSelectAll.Text = _filteredRows.Count > 0 && _filteredRows.All(static row => row.Selected)
             ? "Clear All"
             : "Select All";
     }
@@ -793,9 +825,8 @@ public partial class ProductWorkspaceForm : Form
             return;
         }
 
-        dgvProducts.Columns[SelectColumnName].HeaderText = _rows.Count > 0 && _rows.All(static row => row.Selected)
-            ? "Clear All"
-            : "Select All";
+        dgvProducts.Columns[SelectColumnName].HeaderText = "Select All";
+        PositionSelectAllHeaderCheckBox();
     }
 
     private void ShowImagePreview(ProductItem product)
@@ -1036,6 +1067,8 @@ public partial class ProductWorkspaceForm : Form
 
     private void ApplyButtonStyles()
     {
+        StyleButton(btnSearch, Color.White, Color.FromArgb(30, 64, 175), Color.FromArgb(191, 219, 254));
+        StyleButton(btnClearSearch, Color.White, Color.FromArgb(71, 85, 105), Color.FromArgb(203, 213, 225));
         StyleButton(btnRefresh, Color.White, Color.FromArgb(37, 99, 235), Color.FromArgb(191, 219, 254));
         StyleButton(btnAdd, Color.FromArgb(37, 99, 235), Color.White, Color.FromArgb(37, 99, 235));
         StyleButton(btnCopy, Color.FromArgb(8, 145, 178), Color.White, Color.FromArgb(8, 145, 178));
@@ -1064,12 +1097,13 @@ public partial class ProductWorkspaceForm : Form
         button.Cursor = Cursors.Hand;
         button.Height = 34;
         button.AutoSize = false;
+        button.Margin = new Padding(0, 0, 8, 0);
     }
 
     private void UpdateSummaryLabel()
     {
         var selectedCount = _rows.Count(static row => row.Selected);
-        lblSummary.Text = $"Products: {_rows.Count} total | Selected: {selectedCount} | Mappings: {_categoryMappings.Count}";
+        lblSummary.Text = $"Products: {_rows.Count} total | Showing: {_filteredRows.Count} | Selected: {selectedCount} | Mappings: {_categoryMappings.Count}";
     }
 
     private static Color Lighten(Color color, float amount)
@@ -1134,7 +1168,153 @@ public partial class ProductWorkspaceForm : Form
         dgvProducts.Enabled = !isBusy;
         lblSummary.Text = isBusy
             ? "Uploading images to Lazada..."
-            : $"Products: {_rows.Count} total | Selected: {_rows.Count(static row => row.Selected)} | Mappings: {_categoryMappings.Count}";
+            : $"Products: {_rows.Count} total | Showing: {_filteredRows.Count} | Selected: {_rows.Count(static row => row.Selected)} | Mappings: {_categoryMappings.Count}";
+    }
+
+    private void InitializeSearchControls()
+    {
+        cboCategorySearch.SelectedIndexChanged += cboCategorySearch_SelectedIndexChanged;
+        txtNameSearch.KeyDown += SearchTextBox_KeyDown;
+        RefreshCategoryFilterOptions();
+    }
+
+    private void ApplyProductFilter()
+    {
+        var categoryKeyword = GetSelectedCategoryFilter();
+        var nameKeyword = txtNameSearch.Text.Trim();
+        IEnumerable<ProductListRow> rowsToShow = _rows;
+
+        if (!string.IsNullOrWhiteSpace(categoryKeyword))
+        {
+            rowsToShow = rowsToShow.Where(row => string.Equals(row.Category, categoryKeyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(nameKeyword))
+        {
+            rowsToShow = rowsToShow.Where(row => row.ProductName.Contains(nameKeyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _filteredRows.Clear();
+        _filteredRows.AddRange(rowsToShow);
+        for (var index = 0; index < _filteredRows.Count; index++)
+        {
+            _filteredRows[index].RowNumber = index + 1;
+        }
+
+        _bindingSource.DataSource = _filteredRows;
+        dgvProducts.DataSource = _bindingSource;
+        _bindingSource.ResetBindings(false);
+        UpdateSummaryLabel();
+        UpdateSelectAllButtonText();
+        UpdateSelectColumnHeaderText();
+    }
+
+    private void InitializeSelectAllHeaderCheckBox()
+    {
+        _selectAllHeaderCheckBox.Size = new Size(18, 18);
+        _selectAllHeaderCheckBox.BackColor = Color.Transparent;
+        _selectAllHeaderCheckBox.CheckedChanged += selectAllHeaderCheckBox_CheckedChanged;
+        dgvProducts.Controls.Add(_selectAllHeaderCheckBox);
+        dgvProducts.Resize += dgvProducts_HeaderLayoutChanged;
+        dgvProducts.Scroll += dgvProducts_HeaderLayoutChanged;
+        dgvProducts.ColumnWidthChanged += dgvProducts_HeaderLayoutChanged;
+        dgvProducts.DataBindingComplete += dgvProducts_DataBindingComplete;
+        PositionSelectAllHeaderCheckBox();
+    }
+
+    private void dgvProducts_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
+    {
+        PositionSelectAllHeaderCheckBox();
+        SyncSelectAllHeaderCheckBox();
+    }
+
+    private void dgvProducts_HeaderLayoutChanged(object? sender, EventArgs e)
+    {
+        PositionSelectAllHeaderCheckBox();
+    }
+
+    private void PositionSelectAllHeaderCheckBox()
+    {
+        if (!dgvProducts.Columns.Contains(SelectColumnName))
+        {
+            _selectAllHeaderCheckBox.Visible = false;
+            return;
+        }
+
+        var columnIndex = dgvProducts.Columns[SelectColumnName].Index;
+        var headerCellRectangle = dgvProducts.GetCellDisplayRectangle(columnIndex, -1, true);
+        if (headerCellRectangle.Width <= 0 || headerCellRectangle.Height <= 0)
+        {
+            _selectAllHeaderCheckBox.Visible = false;
+            return;
+        }
+
+        _selectAllHeaderCheckBox.Visible = true;
+        _selectAllHeaderCheckBox.Location = new Point(
+            headerCellRectangle.Right - _selectAllHeaderCheckBox.Width - 8,
+            headerCellRectangle.Y + (headerCellRectangle.Height - _selectAllHeaderCheckBox.Height) / 2);
+        _selectAllHeaderCheckBox.BringToFront();
+    }
+
+    private void SyncSelectAllHeaderCheckBox()
+    {
+        _isUpdatingHeaderCheckBox = true;
+        _selectAllHeaderCheckBox.Checked = _filteredRows.Count > 0 && _filteredRows.All(static row => row.Selected);
+        _isUpdatingHeaderCheckBox = false;
+    }
+
+    private void selectAllHeaderCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (_isUpdatingHeaderCheckBox)
+        {
+            return;
+        }
+
+        SetAllRowsSelected(_selectAllHeaderCheckBox.Checked);
+    }
+
+    private void cboCategorySearch_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        ApplyProductFilter();
+    }
+
+    private void RefreshCategoryFilterOptions()
+    {
+        var selectedCategory = GetSelectedCategoryFilter();
+        var categories = _rows.Select(static row => row.Category)
+            .Concat(_categoryMappings.Keys)
+            .Where(static category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static category => category)
+            .ToList();
+
+        cboCategorySearch.BeginUpdate();
+        cboCategorySearch.Items.Clear();
+        cboCategorySearch.Items.Add(AllCategoriesOption);
+        foreach (var category in categories)
+        {
+            cboCategorySearch.Items.Add(category);
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedCategory))
+        {
+            var matchIndex = cboCategorySearch.FindStringExact(selectedCategory);
+            cboCategorySearch.SelectedIndex = matchIndex >= 0 ? matchIndex : 0;
+        }
+        else
+        {
+            cboCategorySearch.SelectedIndex = 0;
+        }
+
+        cboCategorySearch.EndUpdate();
+    }
+
+    private string GetSelectedCategoryFilter()
+    {
+        var selected = cboCategorySearch.SelectedItem as string;
+        return string.Equals(selected, AllCategoriesOption, StringComparison.Ordinal)
+            ? string.Empty
+            : selected?.Trim() ?? string.Empty;
     }
 
     private static string BuildLazadaUploadSummary(LazadaImageUploadBatchResult result)
@@ -1459,6 +1639,7 @@ public partial class ProductWorkspaceForm : Form
         }
 
         public bool Selected { get; set; }
+        public int RowNumber { get; set; }
         public ProductItem Product { get; }
 
         public Image? Thumbnail => _thumbnail;
