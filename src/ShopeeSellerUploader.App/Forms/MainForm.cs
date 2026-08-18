@@ -1,3 +1,4 @@
+using ClosedXML.Excel;
 using Serilog;
 using ShopeeSellerUploader.App.Services;
 using ShopeeSellerUploader.Contracts.Configuration;
@@ -40,6 +41,15 @@ public partial class ProductWorkspaceForm : Form
     private bool _isExporting;
     private bool _isUploadingLazadaImages;
     private bool _isUpdatingHeaderCheckBox;
+
+    private sealed record LazadaTemplateRequirements(
+        bool RequiresBrand,
+        bool RequiresBabyMaterial,
+        bool RequiresCountryOfOrigin,
+        bool RequiresWarrantyType)
+    {
+        public static LazadaTemplateRequirements None { get; } = new(false, false, false, false);
+    }
 
     public ProductWorkspaceForm(
         AppSettings settings,
@@ -481,12 +491,12 @@ public partial class ProductWorkspaceForm : Form
             }
 
             var summary = BuildLazadaUploadSummary(result);
-            MessageBox.Show(this, summary, "Lazada Image Upload Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            AppendLog(summary.Replace(Environment.NewLine, " | "));
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Failed to upload Lazada images.");
-            MessageBox.Show(this, ex.Message, "Lazada Image Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            AppendLog($"Lazada image upload error: {ex.Message}");
         }
         finally
         {
@@ -682,12 +692,11 @@ public partial class ProductWorkspaceForm : Form
             if (lazadaValidationErrors.Count > 0)
             {
                 var details = string.Join(Environment.NewLine, lazadaValidationErrors);
-                MessageBox.Show(
-                    this,
-                    $"Lazada export cannot continue because required data is missing:{Environment.NewLine}{Environment.NewLine}{details}",
-                    "Lazada Export Validation",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                AppendLog("Lazada export validation failed.");
+                foreach (var error in lazadaValidationErrors)
+                {
+                    AppendLog($"Lazada validation | {error}");
+                }
                 return;
             }
         }
@@ -696,13 +705,11 @@ public partial class ProductWorkspaceForm : Form
             var tikTokValidationErrors = GetTikTokExportErrors(selectedProducts);
             if (tikTokValidationErrors.Count > 0)
             {
-                var details = string.Join(Environment.NewLine, tikTokValidationErrors);
-                MessageBox.Show(
-                    this,
-                    $"TikTok export cannot continue because required data is missing:{Environment.NewLine}{Environment.NewLine}{details}",
-                    "TikTok Export Validation",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                AppendLog("TikTok export validation failed.");
+                foreach (var error in tikTokValidationErrors)
+                {
+                    AppendLog($"TikTok validation | {error}");
+                }
                 return;
             }
         }
@@ -1390,13 +1397,20 @@ public partial class ProductWorkspaceForm : Form
         return ShopeeCategoryCodeParser.Normalize(product.ShopeeCategoryCode);
     }
 
-    private static List<string> GetLazadaExportErrors(IReadOnlyList<ProductItem> products, LazadaImageMode imageMode)
+    private List<string> GetLazadaExportErrors(IReadOnlyList<ProductItem> products, LazadaImageMode imageMode)
     {
         var errors = new List<string>();
-
-        foreach (var product in products)
+        if (!TryGetLazadaTemplateRequirements(products, out var templateRequirements, out var templateError))
         {
+            errors.Add(templateError ?? "Lazada template could not be loaded.");
+            return errors;
+        }
+
+        for (var index = 0; index < products.Count; index++)
+        {
+            var product = products[index];
             var productErrors = new List<string>();
+            var requirements = templateRequirements[index];
             var imageValues = GetPreferredLazadaImageValues(product, imageMode);
             if (imageValues.Count == 0)
             {
@@ -1429,22 +1443,22 @@ public partial class ProductWorkspaceForm : Form
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(product.Brand))
+            if (requirements.RequiresBrand && string.IsNullOrWhiteSpace(product.Brand))
             {
                 productErrors.Add("Brand is required for the current Lazada template");
             }
 
-            if (string.IsNullOrWhiteSpace(product.BabyMaterial))
+            if (requirements.RequiresBabyMaterial && string.IsNullOrWhiteSpace(product.BabyMaterial))
             {
                 productErrors.Add("Baby Material is required for the current Lazada template");
             }
 
-            if (string.IsNullOrWhiteSpace(product.CountryOfOrigin))
+            if (requirements.RequiresCountryOfOrigin && string.IsNullOrWhiteSpace(product.CountryOfOrigin))
             {
                 productErrors.Add("Country Of Origin is required for the current Lazada template");
             }
 
-            if (string.IsNullOrWhiteSpace(product.WarrantyType))
+            if (requirements.RequiresWarrantyType && string.IsNullOrWhiteSpace(product.WarrantyType))
             {
                 productErrors.Add("Warranty Type is required for the current Lazada template");
             }
@@ -1476,6 +1490,190 @@ public partial class ProductWorkspaceForm : Form
         }
 
         return errors;
+    }
+
+    private bool TryGetLazadaTemplateRequirements(
+        IReadOnlyList<ProductItem> products,
+        out List<LazadaTemplateRequirements> templateRequirements,
+        out string? templateError)
+    {
+        templateRequirements = [];
+        templateError = null;
+
+        var templatePath = ResolveLazadaTemplatePath();
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            templateError = $"Lazada template file was not found. Current Template Path: {_pathProvider.TemplateRootDirectory}";
+            return false;
+        }
+
+        try
+        {
+            using var workbook = new XLWorkbook(templatePath);
+            var visibleSheets = workbook.Worksheets
+                .Where(static worksheet =>
+                    !worksheet.Name.EndsWith("_hide", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(worksheet.Name, "INDEX", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(worksheet.Name, "สถานะ", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(worksheet.Name, "global_hide", StringComparison.OrdinalIgnoreCase))
+                .Select(static worksheet => worksheet.Name)
+                .ToList();
+
+            if (visibleSheets.Count == 0)
+            {
+                templateError = $"Lazada template was found, but no visible product sheets were detected: {templatePath}";
+                return false;
+            }
+
+            var requirementsBySheet = new Dictionary<string, LazadaTemplateRequirements>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var product in products)
+            {
+                var sheetName = ResolveLazadaSheetName(visibleSheets, product);
+                if (!requirementsBySheet.TryGetValue(sheetName, out var requirements))
+                {
+                    var worksheet = workbook.Worksheet(sheetName);
+                    var headers = ReadLazadaHeaders(workbook, worksheet);
+                    requirements = BuildLazadaTemplateRequirements(headers.Values);
+                    requirementsBySheet[sheetName] = requirements;
+                }
+
+                templateRequirements.Add(requirements);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            templateError = $"Failed to read Lazada template '{templatePath}': {ex.Message}";
+            return false;
+        }
+    }
+
+    private string ResolveLazadaTemplatePath()
+    {
+        foreach (var directory in GetLazadaTemplateSearchDirectories().Where(static directory => directory.Exists))
+        {
+            foreach (var pattern in new[] { "*lazada*.xlsx", "*Lazada*.xlsx" })
+            {
+                var file = directory
+                    .GetFiles(pattern)
+                    .OrderByDescending(static candidate => candidate.LastWriteTimeUtc)
+                    .FirstOrDefault();
+
+                if (file is not null)
+                {
+                    return file.FullName;
+                }
+            }
+        }
+
+        return Path.Combine(_pathProvider.TemplateRootDirectory, "LazadaTemplate.xlsx");
+    }
+
+    private IEnumerable<DirectoryInfo> GetLazadaTemplateSearchDirectories()
+    {
+        yield return new DirectoryInfo(_pathProvider.TemplateRootDirectory);
+    }
+
+    private string ResolveLazadaSheetName(
+        IReadOnlyCollection<string> worksheetNames,
+        ProductItem product)
+    {
+        if (_categoryMappings.TryGetValue(product.Category, out var mapping) &&
+            !string.IsNullOrWhiteSpace(mapping.LazadaSheetName))
+        {
+            var exactMatch = worksheetNames.FirstOrDefault(name =>
+                string.Equals(name, mapping.LazadaSheetName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(exactMatch))
+            {
+                return exactMatch;
+            }
+        }
+
+        var matched = worksheetNames.FirstOrDefault(name =>
+            product.Category.Contains(name, StringComparison.OrdinalIgnoreCase) ||
+            name.Contains(product.Category, StringComparison.OrdinalIgnoreCase));
+
+        return matched ?? worksheetNames.First();
+    }
+
+    private static Dictionary<int, string> ReadLazadaHeaders(XLWorkbook workbook, IXLWorksheet worksheet)
+    {
+        var hiddenSheetName = $"{worksheet.Name}_hide";
+        var hiddenWorksheet = workbook.Worksheets.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, hiddenSheetName, StringComparison.OrdinalIgnoreCase));
+
+        if (hiddenWorksheet is not null)
+        {
+            var hiddenHeaders = ReadHeadersFromRow(hiddenWorksheet, 3);
+            if (hiddenHeaders.Count > 0)
+            {
+                return hiddenHeaders;
+            }
+        }
+
+        return ReadHeaders(worksheet);
+    }
+
+    private static Dictionary<int, string> ReadHeaders(IXLWorksheet worksheet)
+    {
+        var headers = new Dictionary<int, string>();
+        var lastColumn = worksheet.LastColumnUsed()?.ColumnNumber() ?? 1;
+        for (var column = 1; column <= lastColumn; column++)
+        {
+            var header = worksheet.Cell(1, column).GetString().Trim();
+            if (!string.IsNullOrWhiteSpace(header))
+            {
+                headers[column] = header;
+            }
+        }
+
+        return headers;
+    }
+
+    private static Dictionary<int, string> ReadHeadersFromRow(IXLWorksheet worksheet, int rowNumber)
+    {
+        var headers = new Dictionary<int, string>();
+        var lastColumn = worksheet.LastColumnUsed()?.ColumnNumber() ?? 1;
+        for (var column = 1; column <= lastColumn; column++)
+        {
+            var header = worksheet.Cell(rowNumber, column).GetString().Trim();
+            if (!string.IsNullOrWhiteSpace(header))
+            {
+                headers[column] = header;
+            }
+        }
+
+        return headers;
+    }
+
+    private static LazadaTemplateRequirements BuildLazadaTemplateRequirements(IEnumerable<string> headers)
+    {
+        var normalizedHeaders = headers
+            .Select(NormalizeHeader)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return new LazadaTemplateRequirements(
+            RequiresAny(normalizedHeaders, "brand", "catproperty.p20000", "ยี่ห้อ"),
+            RequiresAny(normalizedHeaders, "ประเภทวัสดุสำหรับเด็กเล็ก", "babymaterial"),
+            RequiresAny(normalizedHeaders, "catproperty.p40387", "countryoforigin", "ประเทศต้นกำเนิด"),
+            RequiresAny(normalizedHeaders, "warrantytype", "การรับประกัน"));
+    }
+
+    private static bool RequiresAny(HashSet<string> normalizedHeaders, params string[] candidates)
+    {
+        return candidates
+            .Select(NormalizeHeader)
+            .Any(normalizedHeaders.Contains);
+    }
+
+    private static string NormalizeHeader(string header)
+    {
+        return header.Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty)
+            .ToLowerInvariant();
     }
 
     private static List<string> GetTikTokExportErrors(IReadOnlyList<ProductItem> products)

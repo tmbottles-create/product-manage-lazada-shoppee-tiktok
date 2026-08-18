@@ -947,13 +947,11 @@ public partial class ProductEditForm : Form
 
             var summary = BuildSingleImageUploadSummary(Product, imageResult);
             txtAiNotes.Text = summary;
-            MessageBox.Show(this, summary, "Image Upload Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Failed to upload Lazada images from Product Editor.");
             txtAiNotes.Text = ex.Message;
-            MessageBox.Show(this, ex.Message, "Image Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {

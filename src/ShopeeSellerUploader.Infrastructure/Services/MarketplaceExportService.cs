@@ -203,16 +203,6 @@ public sealed class MarketplaceExportService : IMarketplaceExportService
         MarketplaceType marketplace,
         IEnumerable<ProductItem> products)
     {
-        if (marketplace == MarketplaceType.Shopee)
-        {
-            foreach (var product in products)
-            {
-                yield return product;
-            }
-
-            yield break;
-        }
-
         foreach (var product in products)
         {
             var variationEntries = ParseVariationEntries(product.VariationOption);
